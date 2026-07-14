@@ -9,7 +9,7 @@
 // want state to persist across serverless invocations — right now it will reset on cold start,
 // which is fine for a live demo but not for production.
 
-import { logToSheet, createCalendarEvent } from './lib/google.js'
+import { logToSheet, createCalendarEvent, checkAvailability } from './lib/google.js'
 
 const schedulingStore = {
   appointments: {},
@@ -53,14 +53,10 @@ async function dispatch(name, parameters) {
 
   switch (name) {
     case 'check_availability':
-      // Demo logic: return a couple of plausible open slots. Replace with a real
-      // calendar-availability query (e.g., FreeBusy via Google Calendar API) for production.
-      result = {
-        slots: [
-          { datetime: nextWeekday(1, 10), provider: parameters.provider || 'Dr. Patel' },
-          { datetime: nextWeekday(3, 14), provider: parameters.provider || 'Dr. Nunez' },
-        ],
-      }
+      // Real Google Calendar FreeBusy query — see checkAvailability() in lib/google.js.
+      // Note: this is a single shared practice calendar, so `provider` is echoed back rather
+      // than actually filtered against a per-provider schedule.
+      result = await checkAvailability(parameters)
       break
 
     case 'check_patient_history':
@@ -177,11 +173,4 @@ async function dispatch(name, parameters) {
   }
 
   return result
-}
-
-function nextWeekday(daysFromNow, hour) {
-  const d = new Date()
-  d.setDate(d.getDate() + daysFromNow)
-  d.setHours(hour, 0, 0, 0)
-  return d.toISOString()
 }
