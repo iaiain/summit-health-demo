@@ -208,3 +208,66 @@ export async function createCalendarEvent({ patient_name, visit_type, provider, 
 
   return { success: true, eventId: event.data.id, htmlLink: event.data.htmlLink }
 }
+
+// Real patients never know an internal "appointment ID" — they know their name and roughly when
+// their visit is. This searches the actual calendar (not the ephemeral in-memory schedulingStore)
+// for an event matching the patient's name near the date/time they gave. Also handles the case
+// where the appointment was created outside our booking flow entirely (e.g. added manually),
+// since it reads real calendar state rather than our own bookkeeping.
+export async function findAppointmentEvent({ patient_name, near_datetime }) {
+  const auth = getAuth(['https://www.googleapis.com/auth/calendar.readonly'])
+  const calendar = google.calendar({ version: 'v3', auth })
+
+  const center = near_datetime ? new Date(near_datetime) : new Date()
+  const windowMs = 14 * 24 * 60 * 60000 // search +/- 14 days around the stated time
+  const timeMin = new Date(center.getTime() - windowMs).toISOString()
+  const timeMax = new Date(center.getTime() + windowMs).toISOString()
+
+  const { data } = await calendar.events.list({
+    calendarId: process.env.GOOGLE_CALENDAR_ID,
+    q: patient_name,
+    timeMin,
+    timeMax,
+    singleEvents: true,
+    orderBy: 'startTime',
+  })
+
+  const events = data.items || []
+  if (events.length === 0) return null
+
+  // Prefer the event closest to the time the caller mentioned, since a patient's name search
+  // could turn up more than one visit (e.g. a linked ultrasound + follow-up pair).
+  events.sort((a, b) => {
+    const da = Math.abs(new Date(a.start.dateTime || a.start.date) - center)
+    const db = Math.abs(new Date(b.start.dateTime || b.start.date) - center)
+    return da - db
+  })
+
+  const best = events[0]
+  return {
+    eventId: best.id,
+    summary: best.summary,
+    start: best.start.dateTime || best.start.date,
+    end: best.end.dateTime || best.end.date,
+  }
+}
+
+export async function moveCalendarEvent(eventId, new_slot_datetime, duration_minutes) {
+  const auth = getAuth(['https://www.googleapis.com/auth/calendar'])
+  const calendar = google.calendar({ version: 'v3', auth })
+
+  const durationMin = duration_minutes || 30
+  const start = new Date(new_slot_datetime)
+  const end = new Date(start.getTime() + durationMin * 60000)
+
+  const event = await calendar.events.patch({
+    calendarId: process.env.GOOGLE_CALENDAR_ID,
+    eventId,
+    requestBody: {
+      start: { dateTime: start.toISOString() },
+      end: { dateTime: end.toISOString() },
+    },
+  })
+
+  return { success: true, eventId: event.data.id, htmlLink: event.data.htmlLink }
+}

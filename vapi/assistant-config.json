@@ -99,15 +99,16 @@
         "type": "function",
         "function": {
           "name": "reschedule_appointment",
-          "description": "Move an existing appointment to a new slot, freeing the old slot for waitlist backfill.",
+          "description": "Move an existing appointment to a new slot, freeing the old slot for waitlist backfill. Looks the appointment up by patient name and approximate current date/time — never ask the patient for an internal appointment ID, they won't know it.",
           "parameters": {
             "type": "object",
             "properties": {
-              "appointment_id": { "type": "string" },
+              "patient_name": { "type": "string" },
+              "current_slot_datetime": { "type": "string", "description": "The date/time the patient believes their existing appointment is at, ISO 8601 (best effort — used to locate the right event)" },
               "new_slot_datetime": { "type": "string" },
               "reason": { "type": "string" }
             },
-            "required": ["appointment_id", "new_slot_datetime"]
+            "required": ["patient_name", "current_slot_datetime", "new_slot_datetime"]
           }
         }
       },

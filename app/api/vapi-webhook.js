@@ -9,7 +9,7 @@
 // want state to persist across serverless invocations — right now it will reset on cold start,
 // which is fine for a live demo but not for production.
 
-import { logToSheet, createCalendarEvent, checkAvailability } from './lib/google.js'
+import { logToSheet, createCalendarEvent, checkAvailability, findAppointmentEvent, moveCalendarEvent, isSlotBusy } from './lib/google.js'
 
 const schedulingStore = {
   appointments: {},
@@ -147,21 +147,42 @@ async function dispatch(name, parameters) {
       break
 
     case 'reschedule_appointment': {
-      const existing = schedulingStore.appointments[parameters.appointment_id] || {}
-      schedulingStore.appointments[parameters.appointment_id] = {
-        ...existing,
-        slot_datetime: parameters.new_slot_datetime,
+      // Find the real calendar event by patient name + approximate current time — this works
+      // regardless of whether the appointment was booked through Sage or added manually, since
+      // it reads actual calendar state rather than our own in-memory bookkeeping.
+      const found = await findAppointmentEvent({
+        patient_name: parameters.patient_name,
+        near_datetime: parameters.current_slot_datetime,
+      })
+      if (!found) {
+        result = { success: false, error: 'appointment_not_found' }
+        break
       }
+
+      const durationMs = new Date(found.end) - new Date(found.start)
+      const durationMin = Math.max(15, Math.round(durationMs / 60000))
+
+      if (await isSlotBusy(parameters.new_slot_datetime, durationMin)) {
+        result = { success: false, error: 'new_slot_no_longer_available' }
+        break
+      }
+
+      const moved = await moveCalendarEvent(found.eventId, parameters.new_slot_datetime, durationMin)
+      if (!moved.success) {
+        result = { success: false, error: 'reschedule_failed' }
+        break
+      }
+
       await logToSheet({
-        id: parameters.appointment_id,
-        patient_name: existing.patient_name || 'Unknown',
-        visit_type: existing.visit_type || '',
-        provider: existing.provider || '',
+        id: found.eventId,
+        patient_name: parameters.patient_name,
+        visit_type: found.summary || '',
+        provider: '',
         slot_datetime: parameters.new_slot_datetime,
         outcome: 'rescheduled',
         notes: parameters.reason || '',
       })
-      result = { success: true, freed_slot: existing.slot_datetime || null }
+      result = { success: true, freed_slot: found.start, new_slot: parameters.new_slot_datetime }
       break
     }
 
