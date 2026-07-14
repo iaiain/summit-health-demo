@@ -9,19 +9,11 @@
 // want state to persist across serverless invocations — right now it will reset on cold start,
 // which is fine for a live demo but not for production.
 
+import { logToSheet, createCalendarEvent } from './_lib/google.js'
+
 const schedulingStore = {
   appointments: {},
   waitlist: [],
-}
-
-async function callInternal(path, body) {
-  const base = process.env.PUBLIC_BASE_URL || ''
-  const res = await fetch(`${base}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  return res.json()
 }
 
 export default async function handler(req, res) {
@@ -83,7 +75,7 @@ async function dispatch(name, parameters) {
     case 'book_appointment': {
       const id = `APT-${Date.now()}`
       schedulingStore.appointments[id] = parameters
-      await callInternal('/api/log-to-sheet', {
+      await logToSheet({
         id,
         patient_name: parameters.patient_name,
         visit_type: parameters.visit_type,
@@ -92,7 +84,7 @@ async function dispatch(name, parameters) {
         outcome: 'booked',
         notes: parameters.notes || '',
       })
-      await callInternal('/api/create-calendar-event', parameters)
+      await createCalendarEvent(parameters)
       result = { success: true, appointment_id: id }
       break
     }
@@ -109,7 +101,7 @@ async function dispatch(name, parameters) {
       const followupId = `APT-${Date.now()}-FU`
       schedulingStore.appointments[ultrasoundId] = { ...parameters, visit_type: 'ultrasound', slot_datetime: parameters.ultrasound_slot }
       schedulingStore.appointments[followupId] = { ...parameters, visit_type: 'md_followup', slot_datetime: parameters.followup_slot }
-      await callInternal('/api/log-to-sheet', {
+      await logToSheet({
         id: ultrasoundId,
         patient_name: parameters.patient_name,
         visit_type: 'Ultrasound (linked)',
@@ -118,7 +110,7 @@ async function dispatch(name, parameters) {
         outcome: 'booked',
         notes: `Linked to follow-up ${followupId}`,
       })
-      await callInternal('/api/log-to-sheet', {
+      await logToSheet({
         id: followupId,
         patient_name: parameters.patient_name,
         visit_type: 'MD Follow-Up (linked)',
@@ -127,8 +119,8 @@ async function dispatch(name, parameters) {
         outcome: 'booked',
         notes: `Linked to ultrasound ${ultrasoundId}`,
       })
-      await callInternal('/api/create-calendar-event', { ...parameters, visit_type: 'Ultrasound', slot_datetime: parameters.ultrasound_slot })
-      await callInternal('/api/create-calendar-event', { ...parameters, visit_type: 'MD Follow-Up', slot_datetime: parameters.followup_slot })
+      await createCalendarEvent({ ...parameters, visit_type: 'Ultrasound', slot_datetime: parameters.ultrasound_slot })
+      await createCalendarEvent({ ...parameters, visit_type: 'MD Follow-Up', slot_datetime: parameters.followup_slot })
       result = { success: true, ultrasound_appointment_id: ultrasoundId, followup_appointment_id: followupId }
       break
     }
@@ -145,7 +137,7 @@ async function dispatch(name, parameters) {
         ...existing,
         slot_datetime: parameters.new_slot_datetime,
       }
-      await callInternal('/api/log-to-sheet', {
+      await logToSheet({
         id: parameters.appointment_id,
         patient_name: existing.patient_name || 'Unknown',
         visit_type: existing.visit_type || '',
@@ -168,11 +160,11 @@ async function dispatch(name, parameters) {
       break
 
     case 'create_calendar_event':
-      result = await callInternal('/api/create-calendar-event', parameters)
+      result = await createCalendarEvent(parameters)
       break
 
     case 'log_call_summary':
-      result = await callInternal('/api/log-to-sheet', {
+      result = await logToSheet({
         id: `CALL-${Date.now()}`,
         patient_name: parameters.patient_name,
         outcome: parameters.outcome,

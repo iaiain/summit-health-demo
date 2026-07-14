@@ -1,5 +1,7 @@
 // Vercel serverless function: POST /api/log-to-sheet
 // Appends a row to the practice's Google Sheet acting as a lightweight CRM.
+// Kept as a standalone endpoint for manual testing (curl/Postman); the webhook calls
+// logToSheet() from _lib/google.js directly instead of hitting this over HTTP.
 //
 // SETUP (do this once, at home):
 // 1. In Google Cloud Console, create a project and enable the "Google Sheets API".
@@ -12,7 +14,7 @@
 //    GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY   (paste the key, keep \n escaped)
 //    GOOGLE_SHEET_ID                      (from the sheet's URL)
 
-import { google } from 'googleapis'
+import { logToSheet } from './_lib/google.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,36 +22,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { id, patient_name, visit_type, provider, slot_datetime, outcome, notes } = req.body
-
-    const auth = new google.auth.JWT(
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      null,
-      (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-      ['https://www.googleapis.com/auth/spreadsheets']
-    )
-
-    const sheets = google.sheets({ version: 'v4', auth })
-
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:H',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [[
-          id || `APT-${Date.now()}`,
-          patient_name || '',
-          visit_type || '',
-          provider || '',
-          slot_datetime || '',
-          outcome || '',
-          notes || '',
-          new Date().toISOString(),
-        ]],
-      },
-    })
-
-    return res.status(200).json({ success: true })
+    const result = await logToSheet(req.body)
+    return res.status(200).json(result)
   } catch (err) {
     console.error('log-to-sheet error:', err)
     return res.status(500).json({ error: 'Failed to log to sheet', detail: err.message })
