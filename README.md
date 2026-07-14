@@ -3,6 +3,8 @@
 Everything needed to wire this up live is in this folder. Rough time to a working demo once
 you're at your computer: **60–90 minutes**, mostly waiting on Google Cloud/VAPI dashboards.
 
+
+
 ## What's here
 
 ```
@@ -34,6 +36,7 @@ app/
    builder, or via VAPI's API/CLI using the JSON directly).
 4. Pick a voice (ElevenLabs voice recommended for warmth — swap the placeholder `voiceId`).
 5. Grab your **Public Key** and this **Assistant ID** — you'll need both for the app.
+
 6. Leave `serverUrl` blank for now; you'll set it after deploying (step 4).
 
 ### 3. The app (20 min)

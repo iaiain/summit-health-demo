@@ -30,12 +30,33 @@ export default async function handler(req, res) {
   }
 
   const message = req.body?.message
-  if (!message || message.type !== 'function-call') {
+  const toolCallList = message?.toolCallList || message?.toolCalls
+
+  // Current Vapi server-message format: message.type === 'tool-calls', with an array of
+  // { id, function: { name, arguments } } at message.toolCallList. The response must be
+  // { results: [{ toolCallId, result }] } with `result` as a STRING (stringify objects).
+  if (!message || message.type !== 'tool-calls' || !Array.isArray(toolCallList)) {
     return res.status(200).json({ received: true })
   }
 
-  const { functionCall } = message
-  const { name, parameters } = functionCall
+  const results = []
+  for (const toolCall of toolCallList) {
+    const toolCallId = toolCall.id
+    const name = toolCall.function?.name
+    const parameters = toolCall.function?.arguments || {}
+    let result
+    try {
+      result = await dispatch(name, parameters)
+    } catch (err) {
+      result = { error: err.message || 'Unhandled error' }
+    }
+    results.push({ toolCallId, result: JSON.stringify(result) })
+  }
+
+  return res.status(200).json({ results })
+}
+
+async function dispatch(name, parameters) {
   let result
 
   switch (name) {
@@ -163,7 +184,7 @@ export default async function handler(req, res) {
       result = { error: `Unknown function: ${name}` }
   }
 
-  return res.status(200).json({ result })
+  return result
 }
 
 function nextWeekday(daysFromNow, hour) {
