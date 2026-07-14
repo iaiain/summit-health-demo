@@ -133,7 +133,21 @@ export async function checkAvailability({ visit_type, provider, date_range_start
         const slotEnd = new Date(slotStart.getTime() + durationMin * 60000)
         if (slotEnd > localSlot(cursorDate, BUSINESS_END_HOUR, 0)) break
         if (slotStart >= earliestAllowed && !overlaps(slotStart, slotEnd)) {
-          slots.push({ datetime: slotStart.toISOString(), provider: provider && provider !== 'any' ? provider : 'any available provider' })
+          slots.push({
+            datetime: slotStart.toISOString(),
+            // Pre-computed human-readable form, correct by construction — LLMs are unreliable at
+            // deriving the day-of-week from a raw ISO timestamp themselves, so the prompt tells
+            // Sage to speak this field verbatim rather than recalculating it.
+            formatted: slotStart.toLocaleString('en-US', {
+              timeZone: 'America/New_York',
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            }),
+            provider: provider && provider !== 'any' ? provider : 'any available provider',
+          })
           if (slots.length >= 5) break
         }
       }

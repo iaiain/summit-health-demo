@@ -1,6 +1,6 @@
 {
   "name": "Summit Health OB/GYN Scheduler",
-  "firstMessage": "Thanks for calling Summit Health OB/GYN, this is Sage. Are you calling to book, reschedule, or ask about an existing appointment?",
+  "firstMessage": "Thanks for calling Summit Health OB-GYN, this is Sage. Are you calling to book, reschedule, or ask about an existing appointment?",
   "model": {
     "provider": "anthropic",
     "model": "claude-sonnet-4-6",
@@ -194,5 +194,13 @@
     "language": "en-US"
   },
   "serverUrl": "REPLACE_WITH_YOUR_WEBHOOK_URL",
-  "endCallFunctionEnabled": true
+  "endCallFunctionEnabled": true,
+  "startSpeakingPlan": {
+    "smartEndpointingEnabled": true
+  },
+  "stopSpeakingPlan": {
+    "numWords": 3,
+    "voiceSeconds": 0.3,
+    "backoffSeconds": 1
+  }
 }
