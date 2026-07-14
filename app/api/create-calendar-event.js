@@ -13,7 +13,7 @@
 //    GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY    (same as sheets)
 //    GOOGLE_CALENDAR_ID                    (the calendar's ID, found in Calendar settings)
 
-import { createCalendarEvent } from './_lib/google.js'
+import { createCalendarEvent } from './lib/google.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

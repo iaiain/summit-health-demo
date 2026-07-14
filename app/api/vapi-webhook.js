@@ -9,7 +9,7 @@
 // want state to persist across serverless invocations — right now it will reset on cold start,
 // which is fine for a live demo but not for production.
 
-import { logToSheet, createCalendarEvent } from './_lib/google.js'
+import { logToSheet, createCalendarEvent } from './lib/google.js'
 
 const schedulingStore = {
   appointments: {},

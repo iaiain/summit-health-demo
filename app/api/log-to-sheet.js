@@ -14,7 +14,7 @@
 //    GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY   (paste the key, keep \n escaped)
 //    GOOGLE_SHEET_ID                      (from the sheet's URL)
 
-import { logToSheet } from './_lib/google.js'
+import { logToSheet } from './lib/google.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
