@@ -78,6 +78,18 @@ function addDays(dateStr, days) {
   return d.toISOString().slice(0, 10)
 }
 
+// Per the practice's real scheduling rules: physicians don't take same-day or next-day
+// appointments — they require two full days' notice. The nurse practitioner is the one who
+// covers same-day/urgent slots instead. We don't have real per-provider calendars in this demo
+// (single shared calendar), so we approximate: if the caller asks for the NP by name, allow
+// same-day; otherwise (physician or unspecified/"any") enforce the two-day lead time.
+const PHYSICIAN_LEAD_DAYS = 2
+
+function isNursePractitionerRequest(provider) {
+  const p = (provider || '').toLowerCase()
+  return p.includes('nurse') || p.includes('np') || p.includes('practitioner')
+}
+
 export async function checkAvailability({ visit_type, provider, date_range_start, date_range_end }) {
   const durationMin = VISIT_DURATION_MINUTES[visit_type] || 30
   const auth = getAuth(['https://www.googleapis.com/auth/calendar.readonly'])
@@ -100,6 +112,13 @@ export async function checkAvailability({ visit_type, provider, date_range_start
   const overlaps = (start, end) =>
     busyBlocks.some(b => start < b.end && end > b.start)
 
+  // Never suggest a slot that's already in the past, and enforce the two-day physician
+  // lead time (same-day only allowed if the NP was specifically requested).
+  const now = new Date()
+  const earliestAllowed = isNursePractitionerRequest(provider)
+    ? now
+    : new Date(now.getTime() + PHYSICIAN_LEAD_DAYS * 24 * 60 * 60000)
+
   const slots = []
   let cursorDate = date_range_start
   while (cursorDate <= date_range_end && slots.length < 5) {
@@ -113,7 +132,7 @@ export async function checkAvailability({ visit_type, provider, date_range_start
         const slotStart = localSlot(cursorDate, startHour, startMinute)
         const slotEnd = new Date(slotStart.getTime() + durationMin * 60000)
         if (slotEnd > localSlot(cursorDate, BUSINESS_END_HOUR, 0)) break
-        if (!overlaps(slotStart, slotEnd)) {
+        if (slotStart >= earliestAllowed && !overlaps(slotStart, slotEnd)) {
           slots.push({ datetime: slotStart.toISOString(), provider: provider && provider !== 'any' ? provider : 'any available provider' })
           if (slots.length >= 5) break
         }

@@ -65,6 +65,11 @@ scheduling it as a routine visit." Do not attempt to talk the patient out of a t
 Use these actual constraints — they're often the difference between a booking that holds and one
 that creates a billing or care-plan problem:
 
+- **Physician lead time**: physicians do not take same-day or next-day appointments — they
+  require two full days' notice, no exceptions. If a patient needs something sooner than that
+  and a physician isn't required for the visit type, offer the nurse practitioner instead, who
+  can take same-day/urgent slots. Say it plainly: "Our physicians need two days' notice for
+  appointments, but our nurse practitioner has same-day availability if that works for you."
 - **Annual / Well-Woman Exam**: must be scheduled at least 1 year and 1 day after the patient's
   last annual exam for insurance coverage purposes. If a patient requests one earlier, say so and
   offer the earliest compliant date rather than silently booking it.
