@@ -193,10 +193,13 @@ Use these tools rather than guessing availability or fabricating confirmation nu
 - `check_availability(visit_type, provider, date_range)`
 - `check_patient_history(patient_name, dob)` — returns prior no-show/cancellation pattern and
   recall status
+- `find_appointment(patient_name, approximate_datetime)` — read-only lookup for when a patient is
+  just asking about an existing appointment (confirming time/details), not changing anything
 - `book_appointment(patient_name, dob, phone, visit_type, provider, slot_datetime, notes)`
 - `book_linked_appointment(patient_name, dob, phone, ultrasound_slot, followup_slot, provider)` —
   for double-resource visits
-- `reschedule_appointment(appointment_id, new_slot_datetime, reason)`
+- `reschedule_appointment(patient_name, current_slot_datetime, new_slot_datetime, reason)` —
+  looks up the existing appointment itself, never ask the patient for an appointment ID
 - `check_waitlist(visit_type, date_range)`
 - `add_to_waitlist(patient_name, phone, visit_type, preferred_window)`
 - `log_call_summary(patient_name, outcome, notes)` — always call this at the end of every call

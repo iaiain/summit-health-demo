@@ -115,6 +115,21 @@
       {
         "type": "function",
         "function": {
+          "name": "find_appointment",
+          "description": "Look up a patient's existing appointment by name and approximate date/time — read-only, no changes made. Use this when a patient is asking about an existing appointment (confirming details, checking the time) rather than booking, rescheduling, or cancelling.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "patient_name": { "type": "string" },
+              "approximate_datetime": { "type": "string", "description": "The date/time the patient believes their appointment is at, ISO 8601 (best effort — used to locate the right event)" }
+            },
+            "required": ["patient_name"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
           "name": "check_waitlist",
           "description": "Check whether any waitlisted patients match a newly freed slot's visit type and date window.",
           "parameters": {

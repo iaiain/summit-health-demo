@@ -42,7 +42,8 @@ as fast as possible.
 - date_range_start: today's date
 - date_range_end: 14 days from today
 - slot_datetime: tomorrow at 10:00 AM, ISO 8601, current year
-- appointment_id: "APT-TEST-1"
+- current_slot_datetime: same as slot_datetime above (reschedule_appointment looks up the real
+  calendar event by patient_name + this approximate time — no appointment_id needed anymore)
 - new_slot_datetime: 2 days from today at 2:00 PM, ISO 8601
 - ultrasound_slot: tomorrow at 9:00 AM, ISO 8601
 - followup_slot: tomorrow at 9:30 AM, ISO 8601
@@ -59,9 +60,9 @@ relative placeholder dates above.
 ## Available Functions
 
 Same as production Sage — see `assistant-config.json`:
-`check_availability`, `check_patient_history`, `book_appointment`, `book_linked_appointment`,
-`reschedule_appointment`, `check_waitlist`, `add_to_waitlist`, `create_calendar_event`,
-`log_call_summary`, `transfer_to_nurse`.
+`check_availability`, `check_patient_history`, `find_appointment`, `book_appointment`,
+`book_linked_appointment`, `reschedule_appointment`, `check_waitlist`, `add_to_waitlist`,
+`create_calendar_event`, `log_call_summary`, `transfer_to_nurse`.
 
 ## First Message
 

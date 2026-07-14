@@ -186,6 +186,17 @@ async function dispatch(name, parameters) {
       break
     }
 
+    case 'find_appointment': {
+      const found = await findAppointmentEvent({
+        patient_name: parameters.patient_name,
+        near_datetime: parameters.approximate_datetime,
+      })
+      result = found
+        ? { success: true, visit_type: found.summary, slot_datetime: found.start }
+        : { success: false, error: 'appointment_not_found' }
+      break
+    }
+
     case 'check_waitlist':
       result = { matches: schedulingStore.waitlist.filter(w => w.visit_type === parameters.visit_type) }
       break
