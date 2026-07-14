@@ -70,6 +70,14 @@ async function dispatch(name, parameters) {
 
     case 'book_appointment': {
       const id = `APT-${Date.now()}`
+      const calendarResult = await createCalendarEvent(parameters)
+      if (!calendarResult.success) {
+        // Slot got taken (by another caller, a race, or stale data) between check_availability
+        // and this booking attempt. Don't log a "booked" row for something that didn't actually
+        // land on the calendar — tell the model to re-check availability instead.
+        result = { success: false, error: calendarResult.error || 'booking_failed' }
+        break
+      }
       schedulingStore.appointments[id] = parameters
       await logToSheet({
         id,
@@ -80,7 +88,6 @@ async function dispatch(name, parameters) {
         outcome: 'booked',
         notes: parameters.notes || '',
       })
-      await createCalendarEvent(parameters)
       result = { success: true, appointment_id: id }
       break
     }
@@ -95,6 +102,20 @@ async function dispatch(name, parameters) {
       }
       const ultrasoundId = `APT-${Date.now()}-US`
       const followupId = `APT-${Date.now()}-FU`
+
+      // Create both calendar events first — only proceed to logging if BOTH legs land, so we
+      // never end up with one half of a linked visit orphaned on the calendar.
+      const ultrasoundEvent = await createCalendarEvent({ ...parameters, visit_type: 'Ultrasound', slot_datetime: parameters.ultrasound_slot })
+      if (!ultrasoundEvent.success) {
+        result = { success: false, error: ultrasoundEvent.error || 'ultrasound_slot_no_longer_available' }
+        break
+      }
+      const followupEvent = await createCalendarEvent({ ...parameters, visit_type: 'MD Follow-Up', slot_datetime: parameters.followup_slot })
+      if (!followupEvent.success) {
+        result = { success: false, error: followupEvent.error || 'followup_slot_no_longer_available', note: 'ultrasound_leg_was_booked_and_may_need_cancelling' }
+        break
+      }
+
       schedulingStore.appointments[ultrasoundId] = { ...parameters, visit_type: 'ultrasound', slot_datetime: parameters.ultrasound_slot }
       schedulingStore.appointments[followupId] = { ...parameters, visit_type: 'md_followup', slot_datetime: parameters.followup_slot }
       await logToSheet({
@@ -115,8 +136,6 @@ async function dispatch(name, parameters) {
         outcome: 'booked',
         notes: `Linked to ultrasound ${ultrasoundId}`,
       })
-      await createCalendarEvent({ ...parameters, visit_type: 'Ultrasound', slot_datetime: parameters.ultrasound_slot })
-      await createCalendarEvent({ ...parameters, visit_type: 'MD Follow-Up', slot_datetime: parameters.followup_slot })
       result = { success: true, ultrasound_appointment_id: ultrasoundId, followup_appointment_id: followupId }
       break
     }

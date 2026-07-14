@@ -161,6 +161,14 @@ Answer these directly and briefly, without over-explaining:
 - **Insurance**: ask what insurance the patient has, and confirm against what's on file rather
   than assuming.
 
+## Handling a Booking Conflict
+
+`book_appointment` and `book_linked_appointment` double-check the calendar right before writing,
+in case the slot got taken between when you offered it and when the patient confirmed. If either
+returns `success: false` with an availability-related error, don't retry the same slot and don't
+tell the patient it's booked. Apologize briefly ("That time just got taken — let me find you
+another"), immediately call `check_availability` again, and offer a new option.
+
 ## Speaking Dates and Times
 
 When `check_availability` (or any tool) returns slots, each one includes a `formatted` field

@@ -158,11 +158,41 @@ export async function checkAvailability({ visit_type, provider, date_range_start
   return { slots, duration_minutes: durationMin }
 }
 
+// Safety net against double-booking: checks the calendar's real freebusy state right before
+// writing an event, independent of whatever check_availability said earlier in the call. This
+// catches races (two callers offered the same slot before either booked), stale test data, or a
+// slot_datetime the model didn't actually get from check_availability's real output.
+export async function isSlotBusy(slot_datetime, duration_minutes) {
+  const auth = getAuth(['https://www.googleapis.com/auth/calendar.readonly'])
+  const calendar = google.calendar({ version: 'v3', auth })
+
+  const start = new Date(slot_datetime)
+  const end = new Date(start.getTime() + (duration_minutes || 30) * 60000)
+
+  const freebusy = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+      items: [{ id: process.env.GOOGLE_CALENDAR_ID }],
+    },
+  })
+
+  const busyBlocks = (freebusy.data.calendars?.[process.env.GOOGLE_CALENDAR_ID]?.busy || [])
+    .map(b => ({ start: new Date(b.start), end: new Date(b.end) }))
+
+  return busyBlocks.some(b => start < b.end && end > b.start)
+}
+
 export async function createCalendarEvent({ patient_name, visit_type, provider, slot_datetime, duration_minutes }) {
   const auth = getAuth(['https://www.googleapis.com/auth/calendar'])
   const calendar = google.calendar({ version: 'v3', auth })
 
   const durationMin = duration_minutes || 30
+
+  if (await isSlotBusy(slot_datetime, durationMin)) {
+    return { success: false, error: 'slot_no_longer_available' }
+  }
+
   const start = new Date(slot_datetime)
   const end = new Date(start.getTime() + durationMin * 60000)
 
